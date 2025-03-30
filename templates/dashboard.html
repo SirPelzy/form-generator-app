@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Dashboard</h1>
+    {# Button to navigate to the form creation page #}
+    <a href="{{ url_for('create_form') }}" class="btn btn-primary">Create New Form</a>
+</div>
+<hr>
+
+<h2>Your Forms</h2>
+
+{% if user_forms %}
+  <div class="list-group">
+    {# Loop through the forms passed from the dashboard route #}
+    {% for form in user_forms %}
+      <div class="list-group-item list-group-item-action flex-column align-items-start mb-2 shadow-sm">
+        <div class="d-flex w-100 justify-content-between">
+          {# Display Form Title - Link to the edit page #}
+          <h5 class="mb-1"><a href="{{ url_for('edit_form', form_id=form.id) }}" class="text-decoration-none">{{ form.title }}</a></h5>
+          {# Display creation date #}
+          <small class="text-muted">Created: {{ form.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+        </div>
+        {# Display description if available #}
+        <p class="mb-1">{{ form.description or 'No description provided.' }}</p>
+        {# Display unique key for reference #}
+        <small class="text-muted">Unique Key: <code class="user-select-all">{{ form.unique_key }}</code></small>
+        <div class="mt-2">
+            {# Link to the edit_form route we created #}
+            <a href="{{ url_for('edit_form', form_id=form.id) }}" class="btn btn-sm btn-outline-secondary me-2">Manage Fields</a>
+            {# Placeholder buttons for future features #}
+            <a href="#" class="btn btn-sm btn-outline-info me-2">View Submissions</a>
+            <a href="#" class="btn btn-sm btn-outline-success me-2">Embed / Share</a>
+            {# Placeholder - Delete functionality requires another route/confirmation #}
+            <a href="#" class="btn btn-sm btn-outline-danger">Delete</a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  {# Message if user has no forms yet #}
+  <div class="alert alert-info" role="alert">
+      You haven't created any forms yet. <a href="{{ url_for('create_form') }}" class="alert-link">Create one now!</a>
+  </div>
+{% endif %}
+
+{% endblock content %}
