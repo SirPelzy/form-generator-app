@@ -223,7 +223,7 @@ def delete_field(field_id):
 
 # !!!!!! TEMPORARY ROUTE FOR DB SETUP - REMOVE IMMEDIATELY AFTER USE !!!!!!
 # Create a very random, hard-to-guess path. Change this if you reuse it.
-SECRET_DB_SETUP_PATH = f'initialize-database-please-work-{uuid.uuid4()}'
+SECRET_DB_SETUP_PATH = 'setup-my-database-now-plz-k9j3h4g5f6d7s8a2'
 
 @app.route(f'/{SECRET_DB_SETUP_PATH}')
 def temp_create_tables():
