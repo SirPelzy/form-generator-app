@@ -3,6 +3,7 @@
 import os
 from flask import Flask, render_template, redirect, url_for, flash, request
 import json
+import uuid
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, current_user, logout_user, login_required
 from flask_bcrypt import Bcrypt
@@ -219,6 +220,36 @@ def delete_field(field_id):
 
     # Redirect back to the edit form page where the field was deleted
     return redirect(url_for('edit_form', form_id=form_id_redirect))
+
+# !!!!!! TEMPORARY ROUTE FOR DB SETUP - REMOVE IMMEDIATELY AFTER USE !!!!!!
+# Create a very random, hard-to-guess path. Change this if you reuse it.
+SECRET_DB_SETUP_PATH = f'initialize-database-please-work-{uuid.uuid4()}'
+
+@app.route(f'/{SECRET_DB_SETUP_PATH}')
+def temp_create_tables():
+    # Optional: Add a simple check using another secret ENV VAR later if needed
+    # if os.environ.get('ADMIN_ACCESS_KEY') != 'some_secret_value':
+    #    abort(403) # Forbidden
+
+    print(f"ACCESSING TEMPORARY DB SETUP ROUTE: /{SECRET_DB_SETUP_PATH}")
+    try:
+        # We need the app context to interact with the database
+        # Calling db.create_all() outside a request might work differently
+        # depending on setup, using app_context is safer.
+        with app.app_context():
+             print("App context active. Executing db.create_all()...")
+             db.create_all()
+             print("db.create_all() command finished.")
+        # Flash message won't be visible on direct return, but good practice
+        flash("Database tables attempted creation via temporary route. REMOVE THIS ROUTE NOW!", "warning")
+        # Return a success message to the browser
+        return f"OK: db.create_all() executed via /{SECRET_DB_SETUP_PATH}. Remove this route from main.py and redeploy NOW.", 200
+    except Exception as e:
+        print(f"ERROR during temporary DB setup route: {e}")
+        flash(f"ERROR during DB setup: {e}", "danger")
+        # Return an error message to the browser
+        return f"Error during DB setup: {e}", 500
+# !!!!!! END OF TEMPORARY ROUTE - REMEMBER TO REMOVE !!!!!!
 
 # --- PUBLIC FORM DISPLAY & SUBMISSION Route ---
 @app.route('/form/<string:form_key>', methods=['GET', 'POST'])
