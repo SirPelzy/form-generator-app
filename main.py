@@ -7,7 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, current_user, logout_user, login_required
 from flask_bcrypt import Bcrypt
 from models import db, User, Form, Field, Submission # Import db and models directly now
-from forms import RegistrationForm, LoginForm # Import our new forms
+from forms import RegistrationForm, LoginForm, FieldForm
 import secrets
 from flask_wtf.csrf import validate_csrf 
 from wtforms.validators import ValidationError
@@ -167,56 +167,59 @@ def create_form():
 @app.route('/edit_form/<int:form_id>', methods=['GET', 'POST'])
 @login_required
 def edit_form(form_id):
-     form = Form.query.get_or_404(form_id)
+    form_to_edit = Form.query.get_or_404(form_id)
+    if form_to_edit.author != current_user:
+        flash('You do not have permission to edit this form.', 'danger')
+        return redirect(url_for('dashboard'))
 
-     # Check ownership
-     if form.author != current_user:
-          flash('You do not have permission to edit this form.', 'danger')
-          return redirect(url_for('dashboard'))
+    # --- Instantiate Add Field form (for both GET and POST) ---
+    add_field_form = FieldForm()
+    add_field_form.field_type.choices = [(ft, ft.capitalize()) for ft in ALLOWED_FIELD_TYPES]
+    # --- End Instantiate ---
 
-     # --- Handle ADDING a new field (POST request) ---
-     if request.method == 'POST':
-          field_label = request.form.get('field_label')
-          field_type = request.form.get('field_type')
-          # Checkbox value: present in form data if checked, absent if not
-          field_required = 'field_required' in request.form
-          # TODO: Handle 'options' later if field_type is 'radio' or 'select'
-          field_options = request.form.get('field_options') # Basic handling for now
+    # --- Handle ADDING a field (POST validation) ---
+    # validate_on_submit() checks if it's POST and CSRF is valid
+    if add_field_form.validate_on_submit():
+        label = add_field_form.label.data
+        field_type = add_field_form.field_type.data
+        required = add_field_form.required.data
+        options = add_field_form.options.data
 
-          # Validation
-          if not field_label:
-               flash('Field label is required.', 'warning')
-          elif field_type not in ALLOWED_FIELD_TYPES:
-               flash('Invalid field type selected.', 'warning')
-          else:
-               # Create new Field object
-               new_field = Field(label=field_label,
-                                 field_type=field_type,
-                                 required=field_required,
-                                 options=field_options if field_type in ['radio', 'select'] else None,
-                                 form_id=form.id)
-               try:
-                    db.session.add(new_field)
-                    db.session.commit()
-                    flash(f'Field "{field_label}" added successfully.', 'success')
-               except Exception as e:
-                    db.session.rollback()
-                    flash(f'Error adding field: {e}', 'danger')
-                    print(f"Error adding field: {e}")
+        # Clear options if not applicable
+        if field_type not in ['radio', 'select']:
+            options = None
 
-          # Redirect back to the same edit page to see the updated list
-          return redirect(url_for('edit_form', form_id=form.id))
+        new_field = Field(label=label, field_type=field_type, required=required,
+                          options=options, form_id=form_id)
+        try:
+            db.session.add(new_field)
+            db.session.commit()
+            flash(f'Field "{label}" added successfully.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error adding field: {e}', 'danger')
+            print(f"Error adding field to form {form_id}: {e}")
 
-     # --- GET Request: Display form info and existing fields ---
-     # Query existing fields for this form
-     existing_fields = Field.query.filter_by(form_id=form.id).order_by(Field.id).all()
+        # Redirect to same page to clear form and show new field
+        return redirect(url_for('edit_form', form_id=form_id))
+    # --- End Add Field Handling ---
 
-     return render_template('edit_form.html',
-                            title=f'Edit Form: {form.title}',
-                            form=form,
-                            fields=existing_fields, # Pass fields to template
-                            allowed_field_types=ALLOWED_FIELD_TYPES) # Pass types for dropdown
+    # --- Display Page (GET request OR failed POST validation) ---
+    # Fetch existing fields
+    fields = Field.query.filter_by(form_id=form_id).order_by(Field.id).all()
 
+    # Generate embed code (keep this logic)
+    public_form_url = url_for('public_form', form_key=form_to_edit.unique_key, _external=True)
+    iframe_code = f'<iframe src="{public_form_url}" width="100%" height="600" frameborder="0" title="{form_to_edit.title}">Loading...</iframe>'
+
+    # If POST failed validation, add_field_form contains errors and submitted data
+    return render_template('edit_form.html',
+                           title=f'Edit Form: {form_to_edit.title}',
+                           form_data=form_to_edit, # Renamed to avoid clash with WTForm variable
+                           fields=fields,
+                           iframe_code=iframe_code,
+                           allowed_field_types=ALLOWED_FIELD_TYPES,
+                           add_field_form=add_field_form) # Pass the WTForm instance
 
 # --- DELETE FIELD Route ---
 @app.route('/delete_field/<int:field_id>', methods=['POST'])
@@ -414,58 +417,47 @@ def view_submissions(form_id):
 @login_required
 def edit_field(field_id):
     field_to_edit = Field.query.get_or_404(field_id)
-    parent_form = field_to_edit.form # Get the parent form
-
-    # IMPORTANT: Verify ownership of the PARENT FORM
+    parent_form = field_to_edit.form
     if parent_form.author != current_user:
         flash('You do not have permission to edit this field.', 'danger')
         return redirect(url_for('dashboard'))
 
-    # --- Handle SAVING changes (POST request) ---
-    if request.method == 'POST':
-        new_label = request.form.get('field_label')
-        new_type = request.form.get('field_type')
-        new_required = 'field_required' in request.form
-        new_options = request.form.get('field_options')
+    # --- Instantiate Edit Field form ---
+    # If GET, pre-populates from field_to_edit object
+    # If POST, WTForms loads data from request.form automatically
+    form = FieldForm(obj=field_to_edit if request.method == 'GET' else None)
+    form.field_type.choices = [(ft, ft.capitalize()) for ft in ALLOWED_FIELD_TYPES]
+    # --- End Instantiate ---
 
-        # Validation
-        if not new_label:
-            flash('Field label is required.', 'warning')
-            # Re-render edit page with error (could also pass back submitted values)
-            return render_template('edit_field.html',
-                                   title=f'Edit Field: {field_to_edit.label}',
-                                   field=field_to_edit,
-                                   allowed_field_types=ALLOWED_FIELD_TYPES)
-        elif new_type not in ALLOWED_FIELD_TYPES:
-            flash('Invalid field type selected.', 'warning')
-            return render_template('edit_field.html',
-                                   title=f'Edit Field: {field_to_edit.label}',
-                                   field=field_to_edit,
-                                   allowed_field_types=ALLOWED_FIELD_TYPES)
-        else:
-            # Update the field object's attributes
-            field_to_edit.label = new_label
-            field_to_edit.field_type = new_type
-            field_to_edit.required = new_required
-            # Only update options if the type supports it, clear otherwise
-            field_to_edit.options = new_options if new_type in ['radio', 'select'] else None
 
-            try:
-                db.session.commit() # Commit the changes to the existing field object
-                flash(f'Field "{new_label}" updated successfully.', 'success')
-                # Redirect back to the parent form's field management page
-                return redirect(url_for('edit_form', form_id=parent_form.id))
-            except Exception as e:
-                db.session.rollback()
-                flash(f'Error updating field: {e}', 'danger')
-                print(f"Error updating field ID {field_id}: {e}")
-                # Redirect back to edit_form on error too? Or re-render edit_field?
-                return redirect(url_for('edit_form', form_id=parent_form.id))
+    # --- Handle SAVING changes (POST validation) ---
+    if form.validate_on_submit():
+        # Update field_to_edit object from validated form data
+        # populate_obj efficiently transfers data for matching fields
+        form.populate_obj(field_to_edit)
 
-    # --- Display the edit form (GET request) ---
+        # Manually clear options if the new type doesn't support them
+        if field_to_edit.field_type not in ['radio', 'select']:
+             field_to_edit.options = None
+
+        try:
+            db.session.commit()
+            flash(f'Field "{field_to_edit.label}" updated successfully.', 'success')
+            return redirect(url_for('edit_form', form_id=parent_form.id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating field: {e}', 'danger')
+            print(f"Error updating field ID {field_id}: {e}")
+            # Redirect back even on error
+            return redirect(url_for('edit_form', form_id=parent_form.id))
+    # --- End Save Changes Handling ---
+
+    # --- Display Page (GET request OR failed POST validation) ---
+    # If GET, form has data from obj=. If failed POST, form has submitted data + errors.
     return render_template('edit_field.html',
                            title=f'Edit Field: {field_to_edit.label}',
-                           field=field_to_edit, # Pass the field object to pre-fill form
+                           form=form, # Pass the WTForm instance
+                           field=field_to_edit) # Pass original field for Cancel link etc.
                            allowed_field_types=ALLOWED_FIELD_TYPES) # For the type dropdown
 
 if __name__ == '__main__':
