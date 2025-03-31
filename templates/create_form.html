@@ -1,24 +1,41 @@
-{% extends "layout.html" %}
-{% block title %}{{ title }}{% endblock %}
+{# templates/create_form.html #}
+
+{% extends "layout.html" %} {% block title %}Create New Form{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <h2>Create a New Form</h2>
     <hr>
 
+    {# Flash messages are handled by layout.html #}
+
+    {# The action points back to the create_form route, method is POST #}
     <form method="POST" action="{{ url_for('create_form') }}">
+        {# *** ADD THIS LINE FOR CSRF PROTECTION *** #}
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {# *** END OF ADDITION *** #}
+
+        {# --- Form Title Input --- #}
         <div class="mb-3">
             <label for="form_title" class="form-label">Form Title <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="form_title" name="form_title" required placeholder="e.g., Contact Us, Feedback Survey" value="{{ current_title or '' }}">
-            </div>
+            <input type="text" class="form-control {% if errors and errors.form_title %}is-invalid{% endif %}" id="form_title" name="form_title" required placeholder="e.g., Contact Us, Feedback Survey" value="{{ current_title or '' }}">
+             {# Basic error display if you add title validation errors later #}
+             {% if errors and errors.form_title %}
+                <div class="invalid-feedback">
+                    {{ errors.form_title }}
+                </div>
+            {% endif %}
+        </div>
 
+        {# --- Form Description Input --- #}
         <div class="mb-3">
             <label for="form_description" class="form-label">Description (Optional)</label>
             <textarea class="form-control" id="form_description" name="form_description" rows="3" placeholder="Add a short description for your form users">{{ current_description or '' }}</textarea>
-            </div>
+        </div>
 
+        {# --- Submit/Cancel Buttons --- #}
         <button type="submit" class="btn btn-primary">Create Form</button>
         <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
     </form>
-</div>
+</div> {# End Container #}
 {% endblock %}
