@@ -73,8 +73,8 @@
                         {% endif %}
                     </div>
                     <div>
-                        {# Placeholder Edit Button #}
-                        <button type="button" class="btn btn-outline-primary btn-sm me-2" disabled>Edit</button>
+                        {# Edit Button #}
+                        <a href="{{ url_for('edit_field', field_id=field.id) }}" class="btn btn-outline-primary btn-sm me-2">Edit</a>
 
                         {# Delete Field Button (within its own form) #}
                         <form action="{{ url_for('delete_field', field_id=field.id) }}" method="POST" style="display: inline;">
