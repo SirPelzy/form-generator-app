@@ -13,7 +13,6 @@ from flask_wtf.csrf import validate_csrf
 from wtforms.validators import ValidationError
 from flask_limiter import Limiter               
 from flask_limiter.util import get_remote_address
-from flask_talisman import Talisman
 from flask_wtf.csrf import CSRFProtect
 
 # Initialize Flask App
@@ -49,31 +48,6 @@ limiter = Limiter(
     # For production consider "redis://..." if you add a Redis service later
 )
 # --- End Rate Limiter Initialization ---
-
-# --- Initialize Security Headers ---
-# Define a basic Content Security Policy (CSP)
-# Allows resources from 'self' (your domain) and the Bootstrap CDN
-csp = {
-    'default-src': '\'self\'',
-    'script-src': [
-        '\'self\'',
-        'https://cdn.jsdelivr.net' # Allow Bootstrap JS
-        '\'unsafe-inline\'' #Allow inline scripts & event handlers (like onclick)
-    ],
-    'style-src': [
-        '\'self\'',
-        'https://cdn.jsdelivr.net' # Allow Bootstrap CSS
-        '\'unsafe-inline\'' # Allow inline styles (<style> tags)
-    ]
-}
-talisman = Talisman(
-    app,
-    force_https=False, # Let Railway handle HTTPS redirection
-    frame_options='SAMEORIGIN', # Default: Prevent framing by other domains (clickjacking)
-    content_security_policy=csp, # Use the updated dictionary
-    content_security_policy_nonce_in=['script-src'] # Keep nonce for potential <script> tags later
-)
-# --- End Security Headers Initialization ---
 
 # Initialize Extensions
 # db defined in models.py, initialize it with the app
@@ -316,7 +290,6 @@ def delete_form(form_id):
 # --- PUBLIC FORM DISPLAY & SUBMISSION Route ---
 @app.route('/form/<string:form_key>', methods=['GET', 'POST'])
 @limiter.limit("50 per hour", methods=['POST'])
-@talisman(frame_options=None) # <-- Disable X-Frame-Options JUST for this route
 def public_form(form_key):
     # Find the form by its unique key, return 404 if not found
     form = Form.query.filter_by(unique_key=form_key).first_or_404()
