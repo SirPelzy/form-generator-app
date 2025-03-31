@@ -1,4 +1,5 @@
 # main.py
+print("===> STARTING main.py execution <===") # Check 1
 import os
 from flask import Flask, render_template, redirect, url_for, flash, request
 import json
@@ -6,9 +7,12 @@ import uuid # Not strictly needed now unless used elsewhere, but keep for now
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, current_user, logout_user, login_required
 from flask_bcrypt import Bcrypt
+print("Imports: Flask, SQLAlchemy, Login, Bcrypt...") # Check 2
 from models import db, User, Form, Field, Submission
+print("Imports: Local models...") # Check 3
 # Removed FieldForm import as it's not used in this version
 from forms import RegistrationForm, LoginForm
+print("Imports: Local forms...") # Check 4
 import secrets
 # Use specific imports for clarity
 from flask_wtf.csrf import CSRFProtect, validate_csrf
@@ -16,52 +20,98 @@ from wtforms.validators import ValidationError
 # Imports for Flask-Limiter (Make sure Flask-Limiter is in requirements.txt)
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+print("Imports: CSRF, Limiter...") # Check 5
 
 # Initialize Flask App
 app = Flask(__name__)
+print("Flask app created.") # Check 6
 
 # Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a_very_secret_key_for_dev_only_398u3nf')
+print("Applying configuration...") # Check 7
 
 # --- DATABASE CONFIGURATION ---
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL and DATABASE_URL.startswith('postgres'):
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    print(f"Using DATABASE_URL (type: postgres)") # Check 7a
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+    print(f"Using fallback SQLite DB") # Check 7b
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+print("Configuration applied.") # Check 8
 
 # --- Initialize CSRF Protection AFTER setting SECRET_KEY ---
+try:
 csrf = CSRFProtect(app)
+print("CSRF initialized.") # Check 9
+except Exception as e:
+    print(f"ERROR initializing CSRF: {e}") # Check 9 Error
 # --- END CSRF Initialization ---
 
 # --- Re-add Rate Limiter Initialization ---
+try:
 limiter = Limiter(
     get_remote_address,
     app=app,
     default_limits=["200 per day", "50 per hour"],
     storage_uri="memory://", # Limits reset on app restart
 )
+print("Limiter initialized.") # Check 10
+except Exception as e:
+    print(f"ERROR initializing Limiter: {e}") # Check 10 Error
 # --- End Rate Limiter Initialization ---
 
-# Initialize Other Extensions
-db.init_app(app)
-bcrypt = Bcrypt(app)
-login_manager = LoginManager(app)
-login_manager.login_view = 'login'
-login_manager.login_message_category = 'info'
+# --- Initialize Other Extensions ---
+try:
+    db.init_app(app)
+    print("DB initialized.") # Check 11
+except Exception as e:
+    print(f"ERROR initializing DB: {e}") # Check 11 Error
 
-# Configure the user loader function
+try:
+    bcrypt = Bcrypt(app)
+    print("Bcrypt initialized.") # Check 12
+except Exception as e:
+    print(f"ERROR initializing Bcrypt: {e}") # Check 12 Error
+
+try:
+    login_manager = LoginManager(app)
+    login_manager.login_view = 'login'
+    login_manager.login_message_category = 'info'
+    print("LoginManager initialized.") # Check 13
+except Exception as e:
+    print(f"ERROR initializing LoginManager: {e}") # Check 13 Error
+
+
+# --- User Loader ---
 @login_manager.user_loader
 def load_user(user_id):
+    # print(f"Attempting to load user {user_id}") # Can add logging here too
     return User.query.get(int(user_id))
 
-# Define allowed field types
-ALLOWED_FIELD_TYPES = [
-    'text', 'email', 'textarea', 'number', 'date',
-    'checkbox', 'radio', 'select'
-]
+print("User loader defined.") # Check 14
+
+# --- Define Allowed Field Types ---
+ALLOWED_FIELD_TYPES = [...] # Keep your list here
+print("ALLOWED_FIELD_TYPES defined.") # Check 15
+
+# --- Define Health Check Route FIRST ---
+@app.route('/_health')
+def health_check():
+     print("HEALTH CHECK ENDPOINT HIT!") # Check 16 (When accessed)
+     # Try a minimal DB interaction if you suspect DB connection issues after init
+     # try:
+     #    db.session.execute(db.text('SELECT 1'))
+     #    print("DB health check successful.")
+     #    return "OK_DB", 200
+     # except Exception as e:
+     #    print(f"DB health check FAILED: {e}")
+     #    return "FAIL_DB", 500
+     return "OK", 200 # Basic health check
+
+print("Health check route defined.") # Check 17
 # --- Routes ---
 
 @app.route('/')
@@ -371,10 +421,13 @@ def view_submissions(form_id):
     return render_template('view_submissions.html',
                            title=f'Submissions for {form.title}',
                            form=form, fields=fields, submissions=parsed_submissions)
+    print("Other routes defined.") # Check 18
 
 # --- Run Application ---
 if __name__ == '__main__':
-    # DO NOT run db.create_all() here in production
-    # Use PORT environment variable provided by Railway, default to 81 otherwise
+    # This block likely won't run under Gunicorn, but good practice
     port = int(os.environ.get('PORT', 81))
+    print(f"Starting Flask dev server on 0.0.0.0:{port} (Should NOT happen on Railway)...") # Check 19
     app.run(host='0.0.0.0', port=port)
+
+print("===> END of main.py execution (definitions complete) <===") # Check 20
