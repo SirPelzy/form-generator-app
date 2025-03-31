@@ -278,6 +278,46 @@ def public_form(form_key):
                            form=form,
                            fields=fields_for_display)
 
+# --- VIEW SUBMISSIONS Route ---
+@app.route('/form/<int:form_id>/submissions')
+@login_required
+def view_submissions(form_id):
+    form = Form.query.get_or_404(form_id)
+
+    # Check ownership
+    if form.author != current_user:
+        flash('You do not have permission to view submissions for this form.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    # Fetch form fields to use as table headers (ordered)
+    fields = Field.query.filter_by(form_id=form.id).order_by(Field.id).all()
+
+    # Fetch submissions for this form, newest first
+    submissions_raw = Submission.query.filter_by(form_id=form.id).order_by(Submission.submitted_at.desc()).all()
+
+    # Process submissions: parse JSON data
+    parsed_submissions = []
+    for sub in submissions_raw:
+        try:
+            # Load the JSON string from the 'data' column into a Python dict
+            data_dict = json.loads(sub.data)
+        except json.JSONDecodeError:
+            # Handle cases where data might not be valid JSON
+            data_dict = {"error": "Could not parse submission data."}
+            print(f"Warning: Could not parse JSON for submission ID {sub.id}")
+
+        parsed_submissions.append({
+            'id': sub.id,
+            'submitted_at': sub.submitted_at,
+            'data': data_dict # Store the parsed dictionary
+        })
+
+    return render_template('view_submissions.html',
+                           title=f'Submissions for {form.title}',
+                           form=form,
+                           fields=fields, # For table headers
+                           submissions=parsed_submissions) # Parsed data
+
 if __name__ == '__main__':
     # Ensure database tables are created before running the app for the first time
     # with app.app_context():
