@@ -1,8 +1,8 @@
 # forms.py
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField # <-- Make sure PasswordField is here
-from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
 from flask_wtf import FlaskForm
-from models import User
+from wtforms import StringField, PasswordField, SubmitField, BooleanField
+from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
+from models import User # Import User model to check for existing users
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username',
@@ -31,17 +31,3 @@ class LoginForm(FlaskForm):
     password = PasswordField('Password', validators=[DataRequired()])
     remember = BooleanField('Remember Me')
     submit = SubmitField('Login')
-
-# --- New Form for Adding/Editing Fields ---
-class FieldForm(FlaskForm):
-    label = StringField('Field Label',
-                        validators=[DataRequired(), Length(min=2, max=100)])
-    # Choices will be populated dynamically in the route
-    field_type = SelectField('Field Type',
-                             choices=[],
-                             validators=[DataRequired()])
-    required = BooleanField('Required?')
-    # Add validation later if needed (e.g., ensure options only for select/radio)
-    options = StringField('Options (comma-separated for Select/Radio)')
-    # Submit button text might be changed in the template if needed
-    submit = SubmitField('Save Field')
