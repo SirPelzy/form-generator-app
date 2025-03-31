@@ -1,4 +1,3 @@
-
 # main.py
 import os
 from flask import Flask, render_template, redirect, url_for, flash, request
@@ -10,6 +9,8 @@ from flask_bcrypt import Bcrypt
 from models import db, User, Form, Field, Submission # Import db and models directly now
 from forms import RegistrationForm, LoginForm # Import our new forms
 import secrets
+from flask_wtf.csrf import validate_csrf 
+from wtforms.validators import ValidationError 
 
 # Initialize Flask App
 app = Flask(__name__)
@@ -201,6 +202,16 @@ def edit_form(form_id):
 @app.route('/delete_field/<int:field_id>', methods=['POST'])
 @login_required
 def delete_field(field_id):
+    # *** CSRF Check START ***
+    try:
+        validate_csrf(request.form.get('csrf_token'))
+    except ValidationError:
+        flash('Invalid CSRF token. Please try again.', 'danger')
+        # Redirect back to dashboard or maybe previous page if possible?
+        # For simplicity, redirecting to dashboard.
+        return redirect(url_for('dashboard'))
+    # *** CSRF Check END ***
+    
     field_to_delete = Field.query.get_or_404(field_id)
     form_id_redirect = field_to_delete.form_id # Get form ID before deleting field
 
@@ -225,6 +236,15 @@ def delete_field(field_id):
 @app.route('/delete_form/<int:form_id>', methods=['POST']) # Use POST for safety
 @login_required
 def delete_form(form_id):
+    # *** CSRF Check START ***
+    try:
+        # Validates the token submitted in the form against the session token
+        validate_csrf(request.form.get('csrf_token'))
+    except ValidationError:
+        flash('Invalid CSRF token. Please try again.', 'danger')
+        return redirect(url_for('dashboard'))
+    # *** CSRF Check END ***
+    
     form_to_delete = Form.query.get_or_404(form_id)
 
     # IMPORTANT: Verify ownership
