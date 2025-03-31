@@ -78,7 +78,7 @@
 
                         {# Delete Field Button (within its own form) #}
                         <form action="{{ url_for('delete_field', field_id=field.id) }}" method="POST" style="display: inline;">
-                            {# If using WTForms later, add CSRF token #}
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-outline-danger btn-sm"
                                     onclick="return confirm('Are you sure you want to delete the field \'{{ field.label }}\'?');">
                                 Delete
