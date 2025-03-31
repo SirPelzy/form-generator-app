@@ -281,47 +281,69 @@ def public_form(form_key):
 
     # --- Handle form SUBMISSION (POST request) ---
     if request.method == 'POST':
-        # Fetch the fields associated with this form again to ensure we have them
+        # Fetch the fields associated with this form again for validation
         fields = Field.query.filter_by(form_id=form.id).order_by(Field.id).all()
+        submitted_data = request.form # Get submitted data
+        errors = {} # Dictionary to store validation errors
 
+        # --- Server-Side Validation Loop ---
+        for field in fields:
+            field_name = f"field_{field.id}"
+            value = submitted_data.get(field_name)
+
+            if field.required:
+                is_missing = False
+                if field.field_type == 'checkbox':
+                    # Required checkbox must be present in the form data
+                    if field_name not in submitted_data:
+                        is_missing = True
+                elif not value: # Check if value is None or empty string for others
+                    is_missing = True
+
+                if is_missing:
+                    errors[field_name] = "This field is required."
+            # --- Add other validations later if needed (e.g., email format) ---
+
+        # --- Check if any errors occurred ---
+        if errors:
+            flash('Please correct the errors below.', 'warning')
+            # Re-render the form template, passing errors and submitted data back
+            return render_template('public_form.html',
+                                   form=form,
+                                   fields=fields,
+                                   errors=errors, # Pass errors dict
+                                   submitted_data=submitted_data) # Pass submitted data
+
+        # --- If validation passed, proceed to save submission ---
         submission_data_dict = {}
         try:
-            # Iterate through the defined fields for this form
             for field in fields:
-                field_name = f"field_{field.id}" # The 'name' attribute from the HTML form
+                field_name = f"field_{field.id}"
                 if field.field_type == 'checkbox':
-                    # Checkbox value is 'true' if the key exists in form data, 'false' otherwise
-                    value = 'true' if field_name in request.form else 'false'
+                    value = 'true' if field_name in submitted_data else 'false'
                 else:
-                    # For other types, get the value directly
-                    value = request.form.get(field_name)
+                    value = submitted_data.get(field_name)
+                submission_data_dict[field_name] = value # Use field_ID key for robustness
 
-                # Store the value using the field's ID as the key for robustness
-                # You could alternatively use field.label but IDs are more stable
-                submission_data_dict[f"field_{field.id}"] = value
-
-            # Convert the dictionary to a JSON string for storage in the Text field
             data_json = json.dumps(submission_data_dict)
-
-            # Create the new submission record
             new_submission = Submission(form_id=form.id, data=data_json)
-                                        # submitted_at has a default in the model
-
-            # Add to database session and commit
             db.session.add(new_submission)
             db.session.commit()
-
             flash('Thank you! Your submission has been recorded.', 'success')
+            # Redirect after successful submission (prevents re-posting on refresh)
+            return redirect(url_for('public_form', form_key=form_key))
 
         except Exception as e:
-            db.session.rollback() # Roll back changes on error
-            flash(f'An error occurred while submitting the form. Please try again. Error: {e}', 'danger')
-            print(f"Error saving submission for form {form.id}: {e}") # Log the error
-
-        # Redirect back to the same form page (which will show the flashed message)
-        # Alternatively, redirect to a dedicated 'thank you' page
-        return redirect(url_for('public_form', form_key=form_key))
-
+            db.session.rollback()
+            flash(f'An error occurred while saving the submission. Error: {e}', 'danger')
+            print(f"Error saving submission for form {form.id}: {e}")
+            # Re-render form even on save error, potentially with data? Or redirect?
+            # Re-rendering might be better here to avoid losing data if possible.
+            return render_template('public_form.html',
+                                   form=form,
+                                   fields=fields,
+                                   errors={"_save_error": "Could not save submission."}, # Generic save error
+                                   submitted_data=submitted_data)
 
     # --- Display the form (GET request) ---
     # Fetch fields for display if it's a GET request
