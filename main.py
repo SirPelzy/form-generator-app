@@ -350,7 +350,9 @@ def public_form(form_key):
     fields_for_display = Field.query.filter_by(form_id=form.id).order_by(Field.id).all()
     return render_template('public_form.html',
                            form=form,
-                           fields=fields_for_display)
+                           fields=fields_for_display,
+                           errors={}, # <-- Add this: Pass empty dict for errors
+                           submitted_data={}) # <-- Add this: Pass empty dict for submitted_data
 
 # --- VIEW SUBMISSIONS Route ---
 @app.route('/form/<int:form_id>/submissions')
