@@ -221,6 +221,32 @@ def delete_field(field_id):
     # Redirect back to the edit form page where the field was deleted
     return redirect(url_for('edit_form', form_id=form_id_redirect))
 
+# --- DELETE FORM Route ---
+@app.route('/delete_form/<int:form_id>', methods=['POST']) # Use POST for safety
+@login_required
+def delete_form(form_id):
+    form_to_delete = Form.query.get_or_404(form_id)
+
+    # IMPORTANT: Verify ownership
+    if form_to_delete.author != current_user:
+        flash('You do not have permission to delete this form.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    try:
+        form_title = form_to_delete.title # Get title before deleting for flash message
+        # Delete the form object from the database session
+        db.session.delete(form_to_delete)
+        # Commit the change (SQLAlchemy cascades should delete related fields/submissions)
+        db.session.commit()
+        flash(f'Form "{form_title}" and all its data deleted successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting form: {e}', 'danger')
+        print(f"Error deleting form ID {form_id}: {e}")
+
+    # Redirect back to the dashboard after deletion
+    return redirect(url_for('dashboard'))
+
 # --- PUBLIC FORM DISPLAY & SUBMISSION Route ---
 @app.route('/form/<string:form_key>', methods=['GET', 'POST'])
 def public_form(form_key):
