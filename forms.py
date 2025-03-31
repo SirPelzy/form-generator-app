@@ -1,8 +1,8 @@
 # forms.py
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField # <-- Make sure PasswordField is here
+from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
 from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, BooleanField, SubmitField # Added SelectField, BooleanField, SubmitField
-from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError # Added Length
-from models import User # Import User model to check for existing users
+from models import User
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username',
