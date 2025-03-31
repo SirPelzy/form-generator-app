@@ -78,6 +78,14 @@
 
               <hr>
               <p class="mt-3">Or share this direct link:</p>
+                <div class="input-group mb-3">
+                  {# Add unique ID to the input field #}
+                  <input type="text" class="form-control" value="{{ public_form_url }}" readonly id="direct-link-input_{{ form.id }}">
+                  {# Add the copy button, calling a new JS function #}
+                  <button class="btn btn-outline-secondary" type="button" id="copy-link-button_{{ form.id }}" onclick="copyDirectLink('direct-link-input_{{ form.id }}', this)">
+                      Copy
+                  </button>
+              </div>
               <input type="text" class="form-control" value="{{ public_form_url }}" readonly>
 
             </div>
@@ -125,6 +133,34 @@ function copyEmbedCode(textAreaId, buttonElement) {
         // Error feedback
         console.error('Failed to copy embed code for ID ' + textAreaId + ':', err);
         alert('Could not copy code automatically. Please select and copy manually.');
+    });
+}
+
+// --- NEW FUNCTION START ---
+function copyDirectLink(inputId, buttonElement) {
+    // Get the input element using the unique ID passed to the function
+    const inputElement = document.getElementById(inputId);
+    // Get the value from the input field
+    const linkToCopy = inputElement.value;
+
+    // Use the Clipboard API
+    navigator.clipboard.writeText(linkToCopy).then(() => {
+        // Success feedback using the specific button passed to the function
+        const originalText = buttonElement.innerText;
+        buttonElement.innerText = 'Copied!';
+        buttonElement.classList.add('btn-success');
+        buttonElement.classList.remove('btn-outline-secondary');
+
+        // Reset button after 2 seconds
+        setTimeout(() => {
+            buttonElement.innerText = originalText;
+            buttonElement.classList.remove('btn-success');
+            buttonElement.classList.add('btn-outline-secondary');
+        }, 2000);
+    }).catch(err => {
+        // Error feedback
+        console.error('Failed to copy direct link for ID ' + inputId + ':', err);
+        alert('Could not copy link automatically. Please try selecting manually.');
     });
 }
 </script>
