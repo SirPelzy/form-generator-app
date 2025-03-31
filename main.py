@@ -11,6 +11,9 @@ from forms import RegistrationForm, LoginForm # Import our new forms
 import secrets
 from flask_wtf.csrf import validate_csrf 
 from wtforms.validators import ValidationError
+from flask_limiter import Limiter               
+from flask_limiter.util import get_remote_address
+from flask_talisman import Talisman
 from flask_wtf.csrf import CSRFProtect
 
 # Initialize Flask App
@@ -36,6 +39,39 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 csrf = CSRFProtect(app)
 # You could also use CSRFProtect().init_app(app) later, but this is common.
 # --- END CSRF Initialization ---
+
+# --- Initialize Rate Limiter ---
+limiter = Limiter(
+    get_remote_address, # Use IP address to identify users for limiting
+    app=app,
+    default_limits=["200 per day", "50 per hour"], # Default limits for all routes
+    storage_uri="memory://", # Use in-memory storage (Note: limits reset on app restart)
+    # For production consider "redis://..." if you add a Redis service later
+)
+# --- End Rate Limiter Initialization ---
+
+# --- Initialize Security Headers ---
+# Define a basic Content Security Policy (CSP)
+# Allows resources from 'self' (your domain) and the Bootstrap CDN
+csp = {
+    'default-src': '\'self\'',
+    'script-src': [
+        '\'self\'',
+        'https://cdn.jsdelivr.net' # Allow Bootstrap JS
+    ],
+    'style-src': [
+        '\'self\'',
+        'https://cdn.jsdelivr.net' # Allow Bootstrap CSS
+    ]
+}
+talisman = Talisman(
+    app,
+    force_https=False, # Let Railway handle HTTPS redirection
+    frame_options='SAMEORIGIN', # Default: Prevent framing by other domains (clickjacking)
+    content_security_policy=csp, # Apply our basic CSP
+    content_security_policy_nonce_in=['script-src'] # Good practice if using inline scripts later
+)
+# --- End Security Headers Initialization ---
 
 # Initialize Extensions
 # db defined in models.py, initialize it with the app
@@ -63,6 +99,7 @@ def home():
     return render_template('home.html', title='Home')
 
 @app.route('/register', methods=['GET', 'POST'])
+@limiter.limit("10 per hour", methods=['POST'])
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('home')) # Already logged in users redirect home
@@ -79,6 +116,7 @@ def register():
     return render_template('register.html', title='Register', form=form)
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", methods=['POST'])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard')) # Already logged in users redirect to dashboard
@@ -275,6 +313,8 @@ def delete_form(form_id):
 
 # --- PUBLIC FORM DISPLAY & SUBMISSION Route ---
 @app.route('/form/<string:form_key>', methods=['GET', 'POST'])
+@limiter.limit("50 per hour", methods=['POST'])
+@talisman(frame_options=None) # <-- Disable X-Frame-Options JUST for this route
 def public_form(form_key):
     # Find the form by its unique key, return 404 if not found
     form = Form.query.filter_by(unique_key=form_key).first_or_404()
