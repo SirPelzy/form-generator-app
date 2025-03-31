@@ -344,6 +344,65 @@ def view_submissions(form_id):
                            fields=fields, # For table headers
                            submissions=parsed_submissions) # Parsed data
 
+# --- EDIT FIELD Route ---
+@app.route('/edit_field/<int:field_id>', methods=['GET', 'POST'])
+@login_required
+def edit_field(field_id):
+    field_to_edit = Field.query.get_or_404(field_id)
+    parent_form = field_to_edit.form # Get the parent form
+
+    # IMPORTANT: Verify ownership of the PARENT FORM
+    if parent_form.author != current_user:
+        flash('You do not have permission to edit this field.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    # --- Handle SAVING changes (POST request) ---
+    if request.method == 'POST':
+        new_label = request.form.get('field_label')
+        new_type = request.form.get('field_type')
+        new_required = 'field_required' in request.form
+        new_options = request.form.get('field_options')
+
+        # Validation
+        if not new_label:
+            flash('Field label is required.', 'warning')
+            # Re-render edit page with error (could also pass back submitted values)
+            return render_template('edit_field.html',
+                                   title=f'Edit Field: {field_to_edit.label}',
+                                   field=field_to_edit,
+                                   allowed_field_types=ALLOWED_FIELD_TYPES)
+        elif new_type not in ALLOWED_FIELD_TYPES:
+            flash('Invalid field type selected.', 'warning')
+            return render_template('edit_field.html',
+                                   title=f'Edit Field: {field_to_edit.label}',
+                                   field=field_to_edit,
+                                   allowed_field_types=ALLOWED_FIELD_TYPES)
+        else:
+            # Update the field object's attributes
+            field_to_edit.label = new_label
+            field_to_edit.field_type = new_type
+            field_to_edit.required = new_required
+            # Only update options if the type supports it, clear otherwise
+            field_to_edit.options = new_options if new_type in ['radio', 'select'] else None
+
+            try:
+                db.session.commit() # Commit the changes to the existing field object
+                flash(f'Field "{new_label}" updated successfully.', 'success')
+                # Redirect back to the parent form's field management page
+                return redirect(url_for('edit_form', form_id=parent_form.id))
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Error updating field: {e}', 'danger')
+                print(f"Error updating field ID {field_id}: {e}")
+                # Redirect back to edit_form on error too? Or re-render edit_field?
+                return redirect(url_for('edit_form', form_id=parent_form.id))
+
+    # --- Display the edit form (GET request) ---
+    return render_template('edit_field.html',
+                           title=f'Edit Field: {field_to_edit.label}',
+                           field=field_to_edit, # Pass the field object to pre-fill form
+                           allowed_field_types=ALLOWED_FIELD_TYPES) # For the type dropdown
+
 if __name__ == '__main__':
     # Ensure database tables are created before running the app for the first time
     # with app.app_context():
