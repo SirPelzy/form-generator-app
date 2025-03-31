@@ -15,65 +15,45 @@
     {# Display Flash Messages (handled by layout.html now) #}
 
     {# --- Add New Field Form --- #}
-    <hr>
-<h4>Add New Field</h4>
-<form method="POST" action="{{ url_for('edit_form', form_id=form_data.id) }}" novalidate>
-    {{ add_field_form.hidden_tag() }} {# Includes CSRF token #}
-
-    <div class="row g-3 mb-3 align-items-end"> {# Example layout row #}
-        {# Label Field #}
-        <div class="col-md-4">
-            {{ add_field_form.label.label(class="form-label") }} <span class="text-danger">*</span>
-            {{ add_field_form.label(class="form-control" + (" is-invalid" if add_field_form.label.errors else "")) }}
-            {% if add_field_form.label.errors %}
-                <div class="invalid-feedback">
-                    {% for error in add_field_form.label.errors %}{{ error }}{% endfor %}
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header">
+            <h4 class="my-0 fw-normal">Add New Field</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('edit_form', form_id=form.id) }}">
+                {# If using WTForms later, add hidden_tag() #}
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="field_label" class="form-label">Field Label <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="field_label" name="field_label" required placeholder="e.g., Your Name, Subject">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="field_type" class="form-label">Field Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="field_type" name="field_type" required>
+                            <option value="" selected disabled>-- Select Type --</option>
+                            {% for type in allowed_field_types %}
+                                <option value="{{ type }}">{{ type | capitalize }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 align-self-center pt-3">
+                        {# Options field - basic for now, show only for relevant types (JS needed for dynamic show/hide) #}
+                        <label for="field_options" class="form-label">Options <small>(for Select/Radio, comma-separated)</small></label>
+                        <input type="text" class="form-control form-control-sm" id="field_options" name="field_options" placeholder="Option 1,Option 2">
+                    </div>
+                    <div class="col-md-2 align-self-end pb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="field_required" name="field_required" value="true">
+                            <label class="form-check-label" for="field_required">
+                                Required?
+                            </label>
+                        </div>
+                    </div>
                 </div>
-            {% endif %}
+                <button type="submit" class="btn btn-success mt-3">Add Field</button>
+            </form>
         </div>
-
-        {# Field Type Select #}
-        <div class="col-md-3">
-            {{ add_field_form.field_type.label(class="form-label") }} <span class="text-danger">*</span>
-            {{ add_field_form.field_type(class="form-select" + (" is-invalid" if add_field_form.field_type.errors else "")) }}
-             {% if add_field_form.field_type.errors %}
-                <div class="invalid-feedback">
-                    {% for error in add_field_form.field_type.errors %}{{ error }}{% endfor %}
-                </div>
-            {% endif %}
-       </div>
-
-        {# Options Field #}
-        <div class="col-md-3">
-             {{ add_field_form.options.label(class="form-label") }} <small>(comma-separated)</small>
-             {{ add_field_form.options(class="form-control" + (" is-invalid" if add_field_form.options.errors else "")) }}
-              {% if add_field_form.options.errors %}
-                <div class="invalid-feedback">
-                    {% for error in add_field_form.options.errors %}{{ error }}{% endfor %}
-                </div>
-            {% endif %}
-        </div>
-
-        {# Required Checkbox #}
-         <div class="col-md-auto">
-            <div class="form-check mb-1"> {# Adjust alignment/margin as needed #}
-                {{ add_field_form.required(class="form-check-input" + (" is-invalid" if add_field_form.required.errors else "")) }}
-                {{ add_field_form.required.label(class="form-check-label") }}
-                 {% if add_field_form.required.errors %}
-                    {# Checkboxes don't have standard invalid-feedback display well #}
-                     <small class="text-danger d-block">
-                        {% for error in add_field_form.required.errors %}{{ error }}{% endfor %}
-                     </small>
-                {% endif %}
-            </div>
-        </div>
-
-        {# Submit Button #}
-        <div class="col-md-auto">
-            {{ add_field_form.submit(class="btn btn-success") }}
-        </div>
-    </div> {# End row #}
-</form>
+    </div>
 
 
     {# --- List Existing Fields --- #}
