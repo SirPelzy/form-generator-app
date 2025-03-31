@@ -52,13 +52,13 @@ except Exception as e:
 
 # --- Re-add Rate Limiter Initialization ---
 try:
-limiter = Limiter(
-    get_remote_address,
-    app=app,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://", # Limits reset on app restart
-)
-print("Limiter initialized.") # Check 10
+    limiter = Limiter(
+        get_remote_address,
+        app=app,
+        default_limits=["200 per day", "50 per hour"],
+        storage_uri="memory://", # Limits reset on app restart
+    )
+    print("Limiter initialized.") # Check 10
 except Exception as e:
     print(f"ERROR initializing Limiter: {e}") # Check 10 Error
 # --- End Rate Limiter Initialization ---
