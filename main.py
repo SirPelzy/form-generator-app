@@ -10,7 +10,8 @@ from models import db, User, Form, Field, Submission # Import db and models dire
 from forms import RegistrationForm, LoginForm # Import our new forms
 import secrets
 from flask_wtf.csrf import validate_csrf 
-from wtforms.validators import ValidationError 
+from wtforms.validators import ValidationError
+from flask_wtf.csrf import CSRFProtect
 
 # Initialize Flask App
 app = Flask(__name__)
@@ -30,6 +31,11 @@ else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# --- Initialize CSRF Protection AFTER setting SECRET_KEY ---
+csrf = CSRFProtect(app)
+# You could also use CSRFProtect().init_app(app) later, but this is common.
+# --- END CSRF Initialization ---
 
 # Initialize Extensions
 # db defined in models.py, initialize it with the app
