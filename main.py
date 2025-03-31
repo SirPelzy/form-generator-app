@@ -58,18 +58,20 @@ csp = {
     'script-src': [
         '\'self\'',
         'https://cdn.jsdelivr.net' # Allow Bootstrap JS
+        '\'unsafe-inline\'' #Allow inline scripts & event handlers (like onclick)
     ],
     'style-src': [
         '\'self\'',
         'https://cdn.jsdelivr.net' # Allow Bootstrap CSS
+        '\'unsafe-inline\'' # Allow inline styles (<style> tags)
     ]
 }
 talisman = Talisman(
     app,
     force_https=False, # Let Railway handle HTTPS redirection
     frame_options='SAMEORIGIN', # Default: Prevent framing by other domains (clickjacking)
-    content_security_policy=csp, # Apply our basic CSP
-    content_security_policy_nonce_in=['script-src'] # Good practice if using inline scripts later
+    content_security_policy=csp, # Use the updated dictionary
+    content_security_policy_nonce_in=['script-src'] # Keep nonce for potential <script> tags later
 )
 # --- End Security Headers Initialization ---
 
