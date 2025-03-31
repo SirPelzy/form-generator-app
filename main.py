@@ -44,8 +44,8 @@ print("Configuration applied.") # Check 8
 
 # --- Initialize CSRF Protection AFTER setting SECRET_KEY ---
 try:
-csrf = CSRFProtect(app)
-print("CSRF initialized.") # Check 9
+    csrf = CSRFProtect(app)
+    print("CSRF initialized.") # Check 9
 except Exception as e:
     print(f"ERROR initializing CSRF: {e}") # Check 9 Error
 # --- END CSRF Initialization ---
